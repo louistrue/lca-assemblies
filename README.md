@@ -30,7 +30,7 @@ A modern web application for managing and analyzing construction assemblies with
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/lca-assemblies.git
+git clone https://github.com/louistrue/lca-assemblies.git
 
 # Navigate to project directory
 cd lca-assemblies
