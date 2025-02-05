@@ -10,20 +10,22 @@ import { Assembly } from "../types/Assembly";
 
 interface AssemblyBasicFieldsProps {
   name: string;
-  eBKPClassification: string;
+  id: string;
   category: Assembly["category"];
   onNameChange: (value: string) => void;
-  onEBKPClassificationChange: (value: string) => void;
+  onIdChange: (value: string) => void;
   onCategoryChange: (value: Assembly["category"]) => void;
+  isNewAssembly: boolean;
 }
 
 const AssemblyBasicFields: React.FC<AssemblyBasicFieldsProps> = ({
   name,
-  eBKPClassification,
+  id,
   category,
   onNameChange,
-  onEBKPClassificationChange,
+  onIdChange,
   onCategoryChange,
+  isNewAssembly,
 }) => {
   return (
     <>
@@ -38,11 +40,17 @@ const AssemblyBasicFields: React.FC<AssemblyBasicFieldsProps> = ({
 
       <TextField
         fullWidth
-        label="eBKP Classification"
-        value={eBKPClassification}
-        onChange={(e) => onEBKPClassificationChange(e.target.value)}
+        label="Assembly ID"
+        value={id}
+        onChange={(e) => onIdChange(e.target.value)}
         margin="normal"
         required
+        disabled={!isNewAssembly}
+        helperText={
+          isNewAssembly
+            ? "Enter a unique identifier"
+            : "ID cannot be changed after creation"
+        }
       />
 
       <FormControl fullWidth margin="normal">

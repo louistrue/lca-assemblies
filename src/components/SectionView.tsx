@@ -54,16 +54,16 @@ const SectionView: React.FC<SectionViewProps> = ({
           }}
         >
           <Typography variant="caption" component="div">
-            0 mm
+            {totalThicknessMm.toFixed(0)} mm
           </Typography>
           <Typography variant="caption" component="div">
-            {totalThicknessMm.toFixed(0)} mm
+            0 mm
           </Typography>
         </Box>
         {/* Layers */}
-        <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column-reverse" }}>
           {layers.map((layer, index) => {
-            const heightPercent = (layer.fraction / totalThicknessMm) * 100;
+            const heightPercent = (layer.thickness_mm / totalThicknessMm) * 100;
             const isEditing = index === editingLayerIndex;
 
             return (
@@ -82,7 +82,7 @@ const SectionView: React.FC<SectionViewProps> = ({
                   flexDirection: "column",
                   justifyContent: "center",
                   position: "relative",
-                  minHeight: layer.fraction < 10 ? "20px" : "40px",
+                  minHeight: layer.thickness_mm < 10 ? "20px" : "40px",
                   "&:hover": {
                     bgcolor: isEditing
                       ? "#ffe0b2"
@@ -96,13 +96,13 @@ const SectionView: React.FC<SectionViewProps> = ({
                 }}
               >
                 {/* Layer content */}
-                <Box sx={{ flex: 1 }}>
+                <Box sx={{ flex: 1, position: "relative" }}>
                   <Typography
                     variant="caption"
                     component="div"
                     sx={{
                       fontWeight: isEditing ? "bold" : "normal",
-                      fontSize: layer.fraction < 10 ? "0.65rem" : "0.75rem",
+                      fontSize: layer.thickness_mm < 10 ? "0.65rem" : "0.75rem",
                       color: isEditing ? "#e65100" : "inherit",
                     }}
                   >
@@ -121,36 +121,77 @@ const SectionView: React.FC<SectionViewProps> = ({
                     component="div"
                     color="text.secondary"
                     sx={{
-                      fontSize: layer.fraction < 10 ? "0.65rem" : "0.75rem",
+                      fontSize: layer.thickness_mm < 10 ? "0.65rem" : "0.75rem",
                       display: "block",
                     }}
                   >
-                    {layer.fraction.toFixed(0)} mm
-                    {layer.materialData &&
+                    {layer.thickness_mm.toFixed(1)} mm
+                    {layer.materialData?.density &&
                       ` - ${layer.materialData.density} kg/m³`}
+                    {layer.materialData?.eBKPClassification && (
+                      <span style={{ marginLeft: "0.5rem" }}>
+                        | {layer.materialData.eBKPClassification}
+                      </span>
+                    )}
                   </Typography>
-                  {layer.rebar && (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.5,
-                        mt: 0.5,
-                      }}
-                    >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      position: "absolute",
+                      right: 8,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      mr: 8,
+                    }}
+                  >
+                    {layer.rebar && (
                       <Box
                         sx={{
-                          width: "12px",
-                          height: "12px",
-                          borderRadius: "50%",
-                          bgcolor: "#1976d2",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
                         }}
-                      />
-                      <Typography variant="caption" component="div">
-                        {layer.rebar.kgPerCubicMeter} kg/m³
-                      </Typography>
-                    </Box>
-                  )}
+                      >
+                        <Box
+                          sx={{
+                            width: "12px",
+                            height: "12px",
+                            borderRadius: "50%",
+                            bgcolor: "#1976d2",
+                          }}
+                        />
+                        <Typography variant="caption" component="div">
+                          {layer.rebar.kgPerCubicMeter} kg/m³
+                        </Typography>
+                      </Box>
+                    )}
+                    {layer.linearElements && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: "12px",
+                            height: "12px",
+                            borderRadius: "2px",
+                            bgcolor: "#66bb6a",
+                            transform: "rotate(45deg)",
+                          }}
+                        />
+                        <Typography variant="caption" component="div">
+                          {layer.linearElements.material}{" "}
+                          {layer.linearElements.width}×
+                          {layer.linearElements.height}mm/
+                          {layer.linearElements.spacing}mm
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
 
                 {/* Layer controls */}

@@ -7,6 +7,8 @@ import {
   CircularProgress,
   Slider,
   Button,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -26,6 +28,8 @@ interface MaterialSelectorProps {
   onSave: () => void;
   onCancel: () => void;
   onAdd: () => void;
+  eBKPClassification: string;
+  onEBKPClassificationChange: (classification: string) => void;
 }
 
 const MaterialSelector: React.FC<MaterialSelectorProps> = ({
@@ -42,7 +46,16 @@ const MaterialSelector: React.FC<MaterialSelectorProps> = ({
   onSave,
   onCancel,
   onAdd,
+  eBKPClassification,
+  onEBKPClassificationChange,
 }) => {
+  const [isEmptyLayer, setIsEmptyLayer] = React.useState(false);
+
+  // Initialize empty layer state based on material
+  React.useEffect(() => {
+    setIsEmptyLayer(!selectedMaterial);
+  }, [selectedMaterial]);
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mb: 2 }}>
       {isEditing && (
@@ -62,7 +75,7 @@ const MaterialSelector: React.FC<MaterialSelectorProps> = ({
             color="primary"
             sx={{ fontWeight: "bold" }}
           >
-            Editing Layer: {selectedMaterial?.nameDE}
+            Editing Layer: {selectedMaterial?.nameDE || "Empty Layer"}
           </Typography>
           <Button
             size="small"
@@ -74,42 +87,64 @@ const MaterialSelector: React.FC<MaterialSelectorProps> = ({
         </Box>
       )}
 
-      <Box sx={{ display: "flex", gap: 2, px: 2 }}>
-        <Autocomplete
-          size="small"
-          sx={{ flex: 1 }}
-          options={materials}
-          loading={loading}
-          value={selectedMaterial}
-          onChange={(_, value) => onMaterialChange(value)}
-          getOptionLabel={(option) =>
-            `${option.nameDE} (${option.density} kg/m³)`
-          }
-          isOptionEqualToValue={(option, value) => option.id === value.id}
-          renderOption={(props, option) => (
-            <li {...props} key={option.id}>
-              {option.nameDE} ({option.density} kg/m³)
-            </li>
-          )}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label={isEditing ? "Edit Material" : "Add Material"}
-              error={!!error}
-              helperText={error}
-              size="small"
-              InputProps={{
-                ...params.InputProps,
-                endAdornment: (
-                  <>
-                    {loading && <CircularProgress color="inherit" size={20} />}
-                    {params.InputProps.endAdornment}
-                  </>
-                ),
+      <Box sx={{ px: 2 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={isEmptyLayer}
+              onChange={(e) => {
+                setIsEmptyLayer(e.target.checked);
+                if (e.target.checked) {
+                  onMaterialChange(null);
+                  onDensityChange(0);
+                }
               }}
             />
-          )}
+          }
+          label="Empty Layer (for linear elements only)"
         />
+      </Box>
+
+      <Box sx={{ display: "flex", gap: 2, px: 2 }}>
+        {!isEmptyLayer && (
+          <Autocomplete
+            size="small"
+            sx={{ flex: 1 }}
+            options={materials}
+            loading={loading}
+            value={selectedMaterial}
+            onChange={(_, value) => onMaterialChange(value)}
+            getOptionLabel={(option) =>
+              `${option.nameDE} (${option.density} kg/m³)`
+            }
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            renderOption={(props, option) => (
+              <li {...props} key={option.id}>
+                {option.nameDE} ({option.density} kg/m³)
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={isEditing ? "Edit Material" : "Add Material"}
+                error={!!error}
+                helperText={error}
+                size="small"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loading && (
+                        <CircularProgress color="inherit" size={20} />
+                      )}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+        )}
         <TextField
           label="Thickness (mm)"
           type="number"
@@ -121,7 +156,7 @@ const MaterialSelector: React.FC<MaterialSelectorProps> = ({
         />
       </Box>
 
-      {selectedMaterial && (
+      {selectedMaterial && !isEmptyLayer && (
         <Box sx={{ px: 2 }}>
           <Typography component="div" gutterBottom>
             Density: {density?.toFixed(0)} kg/m³
@@ -152,6 +187,16 @@ const MaterialSelector: React.FC<MaterialSelectorProps> = ({
               This material has a fixed density.
             </Typography>
           )}
+
+          <TextField
+            fullWidth
+            label="eBKP Classification"
+            value={eBKPClassification}
+            onChange={(e) => onEBKPClassificationChange(e.target.value)}
+            margin="normal"
+            size="small"
+            placeholder="e.g., C 4.1"
+          />
         </Box>
       )}
 
@@ -177,7 +222,7 @@ const MaterialSelector: React.FC<MaterialSelectorProps> = ({
         </Box>
       )}
 
-      {!isEditing && selectedMaterial && (
+      {!isEditing && (thickness !== "" || isEmptyLayer) && (
         <Box sx={{ px: 2 }}>
           <Button
             onClick={onAdd}

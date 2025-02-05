@@ -4,6 +4,7 @@ import { Assembly } from "../types/Assembly";
 import SectionView from "./SectionView";
 import MaterialSelector from "./MaterialSelector";
 import RebarSelector from "./RebarSelector";
+import LinearElementSelector from "./LinearElementSelector";
 import AssemblyBasicFields from "./AssemblyBasicFields";
 import { useAssemblyForm } from "../hooks/useAssemblyForm";
 
@@ -30,11 +31,12 @@ const AssemblyForm: React.FC<AssemblyFormProps> = ({
 
           <AssemblyBasicFields
             name={formState.name}
-            eBKPClassification={formState.eBKPClassification}
+            id={formState.id}
             category={formState.category}
             onNameChange={handlers.setName}
-            onEBKPClassificationChange={handlers.setEBKPClassification}
+            onIdChange={handlers.setId}
             onCategoryChange={handlers.setCategory}
+            isNewAssembly={!assembly}
           />
 
           <Typography variant="h6" component="div" gutterBottom sx={{ mt: 2 }}>
@@ -64,6 +66,8 @@ const AssemblyForm: React.FC<AssemblyFormProps> = ({
             onSave={handlers.handleSaveLayerEdit}
             onCancel={handlers.resetForm}
             onAdd={handlers.handleAddLayer}
+            eBKPClassification={formState.newEBKPClassification}
+            onEBKPClassificationChange={handlers.setNewEBKPClassification}
           />
 
           <RebarSelector
@@ -84,6 +88,30 @@ const AssemblyForm: React.FC<AssemblyFormProps> = ({
             onRebarAmountChange={handlers.setNewRebarAmount}
             onAdd={handlers.handleAddLayer}
             isEditing={formState.editingLayer !== null}
+          />
+
+          <LinearElementSelector
+            showLinearElements={formState.showLinearElements}
+            selectedMaterial={formState.newMaterial}
+            linearElementMaterials={formState.linearElementMaterials}
+            selectedLinearElementMaterial={formState.newLinearElementMaterial}
+            width={formState.newLinearElementWidth}
+            height={formState.newLinearElementHeight}
+            spacing={formState.newLinearElementSpacing}
+            loading={formState.loading}
+            onShowLinearElementsChange={(show) => {
+              handlers.setShowLinearElements(show);
+              if (!show) {
+                handlers.setNewLinearElementMaterial(null);
+                handlers.setNewLinearElementWidth("");
+                handlers.setNewLinearElementHeight("");
+                handlers.setNewLinearElementSpacing("");
+              }
+            }}
+            onLinearElementMaterialChange={handlers.setNewLinearElementMaterial}
+            onWidthChange={handlers.setNewLinearElementWidth}
+            onHeightChange={handlers.setNewLinearElementHeight}
+            onSpacingChange={handlers.setNewLinearElementSpacing}
           />
 
           <Box

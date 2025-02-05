@@ -4,13 +4,42 @@ import Fuse from "fuse.js";
 let cachedMaterials: KbobMaterial[] | null = null;
 let materialsFuse: Fuse<KbobMaterial> | null = null;
 
+export const EBKP_AMORTIZATION: { [key: string]: number } = {
+  "B06.01": 60,
+  "B06.02": 60,
+  "B06.04": 60,
+  "B07.02": 60,
+  C01: 60,
+  "C02.01": 60,
+  "C02.02": 60,
+  C03: 60,
+  "C04.01": 60,
+  "C04.04": 60,
+  "C04.05": 60,
+  "C04.08": 40,
+  E01: 60,
+  "E02.01": 30,
+  "E02.02": 30,
+  "E02.03": 40,
+  "E02.04": 40,
+  "E02.05": 40,
+  E03: 30,
+  "F01.01": 60,
+  "F01.02": 30,
+  "F01.03": 40,
+  F02: 30,
+  G01: 30,
+  G02: 30,
+  G03: 30,
+  G04: 30,
+};
+
 export interface KbobMaterial {
   id: string;
+  uuid: string;
   nameDE: string;
   nameFR: string;
   density: number;
-  densityMin?: number;
-  densityMax?: number;
   unit: string;
   gwp: number;
   gwpProduction: number;
@@ -26,14 +55,21 @@ export interface KbobMaterial {
 
 interface RawKbobMaterial {
   uuid: string;
-  nameDE?: string;
-  density?: string;
-  densityMin?: string;
-  densityMax?: string;
-  unit?: string;
-  gwpTotal?: number;
-  ubp21Total?: number;
-  primaryEnergyNonRenewableTotal?: number;
+  id: string;
+  nameDE: string;
+  nameFR: string;
+  density: string;
+  unit: string;
+  gwpTotal: number;
+  gwpProduction: number;
+  gwpDisposal: number;
+  ubp21Total: number;
+  ubp21Production: number;
+  ubp21Disposal: number;
+  primaryEnergyNonRenewableTotal: number;
+  primaryEnergyNonRenewableProductionTotal: number;
+  primaryEnergyNonRenewableDisposal: number;
+  biogenicCarbon: number;
 }
 
 function parseDensity(densityStr: string | null | undefined): number {
@@ -82,7 +118,6 @@ export async function fetchKBOBMaterials(): Promise<KbobMaterial[]> {
     try {
       console.log(`Fetching KBOB materials (attempt ${attempt}/${maxRetries})`);
 
-      // Single request with pageSize=all
       const response = await fetch(`${API_URL}?pageSize=all`, {
         method: "GET",
         headers: {
@@ -111,28 +146,25 @@ export async function fetchKBOBMaterials(): Promise<KbobMaterial[]> {
       const transformedMaterials: KbobMaterial[] = allMaterials
         .map((material: RawKbobMaterial) => {
           const baseDensity = parseDensity(material.density);
-          const densityRange = parseDensityRange(material.density);
 
           return {
-            id: material.uuid,
+            id: material.id,
+            uuid: material.uuid,
             nameDE: material.nameDE || "",
-            nameFR: "",
+            nameFR: material.nameFR || "",
             density: baseDensity,
-            ...(densityRange && {
-              densityMin: densityRange.min,
-              densityMax: densityRange.max,
-            }),
             unit: material.unit || "",
             gwp: material.gwpTotal || 0,
-            gwpProduction: 0,
-            gwpDisposal: 0,
+            gwpProduction: material.gwpProduction || 0,
+            gwpDisposal: material.gwpDisposal || 0,
             ubp: material.ubp21Total || 0,
-            ubpProduction: 0,
-            ubpDisposal: 0,
+            ubpProduction: material.ubp21Production || 0,
+            ubpDisposal: material.ubp21Disposal || 0,
             penr: material.primaryEnergyNonRenewableTotal || 0,
-            penrProduction: 0,
-            penrDisposal: 0,
-            biogenicCarbon: 0,
+            penrProduction:
+              material.primaryEnergyNonRenewableProductionTotal || 0,
+            penrDisposal: material.primaryEnergyNonRenewableDisposal || 0,
+            biogenicCarbon: material.biogenicCarbon || 0,
           };
         })
         .filter(

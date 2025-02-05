@@ -17,9 +17,7 @@ interface UseAssemblyFormProps {
 
 export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
   const [name, setName] = useState(assembly?.name || "");
-  const [eBKPClassification, setEBKPClassification] = useState(
-    assembly?.eBKPClassification || ""
-  );
+  const [id, setId] = useState(assembly?.id || "");
   const [category, setCategory] = useState<Assembly["category"]>(
     assembly?.category || "Wall"
   );
@@ -27,6 +25,7 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
   const [newMaterial, setNewMaterial] = useState<KbobMaterial | null>(null);
   const [newThickness, setNewThickness] = useState("");
   const [newDensity, setNewDensity] = useState<number | null>(null);
+  const [newEBKPClassification, setNewEBKPClassification] = useState("");
   const [materials, setMaterials] = useState<KbobMaterial[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +35,15 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
     null
   );
   const [newRebarAmount, setNewRebarAmount] = useState<string>("");
+  const [showLinearElements, setShowLinearElements] = useState(false);
+  const [newLinearElementMaterial, setNewLinearElementMaterial] =
+    useState<KbobMaterial | null>(null);
+  const [newLinearElementWidth, setNewLinearElementWidth] = useState("");
+  const [newLinearElementHeight, setNewLinearElementHeight] = useState("");
+  const [newLinearElementSpacing, setNewLinearElementSpacing] = useState("");
 
   const totalThicknessMm = layers.reduce(
-    (sum, layer) => sum + layer.fraction,
+    (sum, layer) => sum + layer.thickness_mm,
     0
   );
 
@@ -50,6 +55,14 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
       !m.nameDE.toLowerCase().includes("beton")
   );
 
+  // Filter materials suitable for linear elements (e.g., timber, steel)
+  const linearElementMaterials = materials.filter(
+    (m) =>
+      m.nameDE.toLowerCase().includes("holz") ||
+      m.nameDE.toLowerCase().includes("stahl") ||
+      m.nameDE.toLowerCase().includes("metall")
+  );
+
   useEffect(() => {
     const loadMaterials = async () => {
       setLoading(true);
@@ -59,10 +72,12 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
         setMaterials(fetchedMaterials);
 
         if (assembly) {
+          console.log("Loading assembly:", assembly);
           const convertedAssembly = convertImportedAssembly(
             assembly,
             fetchedMaterials
           );
+          console.log("Converted assembly:", convertedAssembly);
           setLayers(convertedAssembly.layers);
         }
       } catch (err) {
@@ -83,41 +98,112 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
   }, [newMaterial]);
 
   const handleAddLayer = () => {
-    if (newMaterial && newThickness && newDensity) {
-      const thicknessMm = parseFloat(newThickness);
-      if (thicknessMm > 0) {
-        const newLayer = {
-          material: newMaterial.nameDE,
-          fraction: thicknessMm,
-          materialData: {
-            gwp: newMaterial.gwp,
-            density: newDensity,
-            unit: newMaterial.unit,
-            kbobName: newMaterial.nameDE,
-            userDefinedDensity: newDensity !== newMaterial.density,
-          },
-          ...(newRebarMaterial &&
-            newRebarAmount && {
-              rebar: {
-                material: newRebarMaterial.nameDE,
-                kgPerCubicMeter: parseFloat(newRebarAmount),
-                materialData: {
-                  gwp: newRebarMaterial.gwp,
-                  unit: newRebarMaterial.unit,
-                  kbobName: newRebarMaterial.nameDE,
-                },
+    const thicknessMm = parseFloat(newThickness);
+    if (thicknessMm > 0) {
+      const newLayer = {
+        material: newMaterial?.nameDE || "Empty Layer",
+        thickness_mm: thicknessMm,
+        materialData: newMaterial
+          ? {
+              kbobName: newMaterial.nameDE,
+              unit: newMaterial.unit,
+              density: newDensity || newMaterial.density,
+              userDefinedDensity: newDensity !== newMaterial.density,
+              eBKPClassification: newEBKPClassification,
+              amortization_years: 40,
+              thickness_mm: thicknessMm,
+              kg_per_m2:
+                (thicknessMm / 1000) *
+                (newDensity || newMaterial.density) *
+                1000,
+              gwp: newMaterial.gwp,
+              UBP: newMaterial.ubp,
+              PENRE: newMaterial.penr,
+              gwp_indicator: newMaterial.gwp,
+              UBP_indicator: newMaterial.ubp,
+              PENRE_indicator: newMaterial.penr,
+              gwp_per_year: newMaterial.gwp / 40,
+              UBP_per_year: newMaterial.ubp / 40,
+              PENRE_per_year: newMaterial.penr / 40,
+            }
+          : undefined,
+        ...(showRebar &&
+          newRebarMaterial &&
+          newRebarAmount && {
+            rebar: {
+              material: newRebarMaterial.nameDE,
+              kgPerCubicMeter: parseFloat(newRebarAmount),
+              materialData: {
+                kbobName: newRebarMaterial.nameDE,
+                unit: newRebarMaterial.unit,
+                density: newRebarMaterial.density,
+                userDefinedDensity: false,
+                eBKPClassification: newEBKPClassification,
+                amortization_years: 40,
+                thickness_mm: thicknessMm,
+                kg_per_m2: parseFloat(newRebarAmount),
+                gwp: newRebarMaterial.gwp,
+                UBP: newRebarMaterial.ubp,
+                PENRE: newRebarMaterial.penr,
+                gwp_indicator: newRebarMaterial.gwp,
+                UBP_indicator: newRebarMaterial.ubp,
+                PENRE_indicator: newRebarMaterial.penr,
+                gwp_per_year: newRebarMaterial.gwp / 40,
+                UBP_per_year: newRebarMaterial.ubp / 40,
+                PENRE_per_year: newRebarMaterial.penr / 40,
               },
-            }),
-        };
+            },
+          }),
+        ...(showLinearElements &&
+          newLinearElementMaterial &&
+          newLinearElementWidth &&
+          newLinearElementHeight &&
+          newLinearElementSpacing && {
+            linearElements: {
+              material: newLinearElementMaterial.nameDE,
+              width: parseFloat(newLinearElementWidth),
+              height: parseFloat(newLinearElementHeight),
+              spacing: parseFloat(newLinearElementSpacing),
+              kg_per_m2:
+                (parseFloat(newLinearElementWidth) / 1000) *
+                (parseFloat(newLinearElementHeight) / 1000) *
+                (1 / (parseFloat(newLinearElementSpacing) / 1000)) *
+                (newLinearElementMaterial.density || 0),
+              materialData: {
+                kbobName: newLinearElementMaterial.nameDE,
+                unit: newLinearElementMaterial.unit,
+                density: newLinearElementMaterial.density,
+                userDefinedDensity: false,
+                eBKPClassification: newEBKPClassification,
+                amortization_years: 40,
+                thickness_mm: thicknessMm,
+                kg_per_m2:
+                  (parseFloat(newLinearElementWidth) / 1000) *
+                  (parseFloat(newLinearElementHeight) / 1000) *
+                  (1 / (parseFloat(newLinearElementSpacing) / 1000)) *
+                  (newLinearElementMaterial.density || 0),
+                gwp: newLinearElementMaterial.gwp,
+                UBP: newLinearElementMaterial.ubp,
+                PENRE: newLinearElementMaterial.penr,
+                gwp_indicator: newLinearElementMaterial.gwp,
+                UBP_indicator: newLinearElementMaterial.ubp,
+                PENRE_indicator: newLinearElementMaterial.penr,
+                gwp_per_year: newLinearElementMaterial.gwp / 40,
+                UBP_per_year: newLinearElementMaterial.ubp / 40,
+                PENRE_per_year: newLinearElementMaterial.penr / 40,
+              },
+            },
+          }),
+      };
 
-        setLayers([...layers, newLayer]);
-        resetForm();
-      }
+      setLayers([...layers, newLayer]);
+      resetForm();
     }
   };
 
   const handleEditLayer = (index: number) => {
     const layer = layers[index];
+    console.log("Editing layer:", layer);
     const currentMaterial =
       findBestMaterialMatch(layer.material, materials) ||
       materials.find((m) => m.nameDE === layer.materialData?.kbobName) ||
@@ -125,8 +211,13 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
 
     setEditingLayer(index);
     setNewMaterial(currentMaterial || null);
-    setNewThickness(layer.fraction.toString());
+    setNewThickness(layer.thickness_mm.toString());
     setNewDensity(layer.materialData?.density || null);
+    console.log(
+      "Setting eBKP classification:",
+      layer.materialData?.eBKPClassification
+    );
+    setNewEBKPClassification(layer.materialData?.eBKPClassification || "");
 
     if (layer.rebar) {
       setShowRebar(true);
@@ -143,41 +234,127 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
       setNewRebarMaterial(null);
       setNewRebarAmount("");
     }
+
+    // Set up linear elements if present
+    if (layer.linearElements) {
+      setShowLinearElements(true);
+      const linearElementMaterial =
+        findBestMaterialMatch(layer.linearElements.material, materials) ||
+        materials.find(
+          (m) => m.nameDE === layer.linearElements.materialData?.kbobName
+        );
+      setNewLinearElementMaterial(linearElementMaterial || null);
+      setNewLinearElementWidth(layer.linearElements.width.toString());
+      setNewLinearElementHeight(layer.linearElements.height.toString());
+      setNewLinearElementSpacing(layer.linearElements.spacing.toString());
+    } else {
+      setShowLinearElements(false);
+      setNewLinearElementMaterial(null);
+      setNewLinearElementWidth("");
+      setNewLinearElementHeight("");
+      setNewLinearElementSpacing("");
+    }
   };
 
   const handleSaveLayerEdit = () => {
-    if (editingLayer !== null && newMaterial && newThickness && newDensity) {
-      const thicknessMm = parseFloat(newThickness);
-      if (thicknessMm > 0) {
-        const updatedLayers = [...layers];
-        updatedLayers[editingLayer] = {
-          material: newMaterial.nameDE,
-          fraction: thicknessMm,
-          materialData: {
-            gwp: newMaterial.gwp,
-            density: newDensity,
-            unit: newMaterial.unit,
-            kbobName: newMaterial.nameDE,
-            userDefinedDensity: newDensity !== newMaterial.density,
-          },
-          ...(showRebar &&
-            newRebarMaterial &&
-            newRebarAmount && {
-              rebar: {
-                material: newRebarMaterial.nameDE,
-                kgPerCubicMeter: parseFloat(newRebarAmount),
-                materialData: {
-                  gwp: newRebarMaterial.gwp,
-                  unit: newRebarMaterial.unit,
-                  kbobName: newRebarMaterial.nameDE,
-                },
+    if (editingLayer === null) return;
+
+    const thicknessMm = parseFloat(newThickness);
+    if (thicknessMm > 0) {
+      const updatedLayer = {
+        ...layers[editingLayer], // Preserve existing layer data
+        material: newMaterial?.nameDE || "Empty Layer",
+        thickness_mm: thicknessMm,
+        materialData: newMaterial
+          ? {
+              kbobName: newMaterial.nameDE,
+              unit: newMaterial.unit,
+              density: newDensity || newMaterial.density,
+              userDefinedDensity: newDensity !== newMaterial.density,
+              eBKPClassification: newEBKPClassification,
+              amortization_years: 40,
+              thickness_mm: thicknessMm,
+              kg_per_m2:
+                (thicknessMm / 1000) * (newDensity || newMaterial.density),
+              gwp:
+                newMaterial.gwp *
+                ((thicknessMm / 1000) * (newDensity || newMaterial.density)),
+              UBP:
+                newMaterial.ubp *
+                ((thicknessMm / 1000) * (newDensity || newMaterial.density)),
+              PENRE:
+                newMaterial.penr *
+                ((thicknessMm / 1000) * (newDensity || newMaterial.density)),
+              gwp_indicator: newMaterial.gwp,
+              UBP_indicator: newMaterial.ubp,
+              PENRE_indicator: newMaterial.penr,
+              gwp_per_year:
+                (newMaterial.gwp *
+                  ((thicknessMm / 1000) *
+                    (newDensity || newMaterial.density))) /
+                40,
+              UBP_per_year:
+                (newMaterial.ubp *
+                  ((thicknessMm / 1000) *
+                    (newDensity || newMaterial.density))) /
+                40,
+              PENRE_per_year:
+                (newMaterial.penr *
+                  ((thicknessMm / 1000) *
+                    (newDensity || newMaterial.density))) /
+                40,
+            }
+          : undefined,
+        ...(showRebar &&
+          newRebarMaterial &&
+          newRebarAmount && {
+            rebar: {
+              material: newRebarMaterial.nameDE,
+              kgPerCubicMeter: parseFloat(newRebarAmount),
+              materialData: {
+                kbobName: newRebarMaterial.nameDE,
+                unit: newRebarMaterial.unit,
+                density: newRebarMaterial.density,
+                userDefinedDensity: false,
+                eBKPClassification: newEBKPClassification,
+                amortization_years: 40,
+                thickness_mm: thicknessMm,
+                kg_per_m2: parseFloat(newRebarAmount) * (thicknessMm / 1000),
+                gwp:
+                  newRebarMaterial.gwp *
+                  (parseFloat(newRebarAmount) * (thicknessMm / 1000)),
+                UBP:
+                  newRebarMaterial.ubp *
+                  (parseFloat(newRebarAmount) * (thicknessMm / 1000)),
+                PENRE:
+                  newRebarMaterial.penr *
+                  (parseFloat(newRebarAmount) * (thicknessMm / 1000)),
+                gwp_indicator: newRebarMaterial.gwp,
+                UBP_indicator: newRebarMaterial.ubp,
+                PENRE_indicator: newRebarMaterial.penr,
+                gwp_per_year:
+                  (newRebarMaterial.gwp *
+                    (parseFloat(newRebarAmount) * (thicknessMm / 1000))) /
+                  40,
+                UBP_per_year:
+                  (newRebarMaterial.ubp *
+                    (parseFloat(newRebarAmount) * (thicknessMm / 1000))) /
+                  40,
+                PENRE_per_year:
+                  (newRebarMaterial.penr *
+                    (parseFloat(newRebarAmount) * (thicknessMm / 1000))) /
+                  40,
               },
-            }),
-        };
-        setLayers(updatedLayers);
-        resetForm();
-      }
+            },
+          }),
+      };
+
+      const updatedLayers = [...layers];
+      updatedLayers[editingLayer] = updatedLayer;
+      setLayers(updatedLayers);
     }
+
+    resetForm();
   };
 
   const resetForm = () => {
@@ -185,9 +362,15 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
     setNewMaterial(null);
     setNewThickness("");
     setNewDensity(null);
+    setNewEBKPClassification("");
     setShowRebar(false);
     setNewRebarMaterial(null);
     setNewRebarAmount("");
+    setShowLinearElements(false);
+    setNewLinearElementMaterial(null);
+    setNewLinearElementWidth("");
+    setNewLinearElementHeight("");
+    setNewLinearElementSpacing("");
   };
 
   const handleMoveLayer = (index: number, direction: "up" | "down") => {
@@ -224,16 +407,17 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
       return;
     }
 
+    if (!id.trim()) {
+      alert("Please enter an Assembly ID");
+      return;
+    }
+
     const assemblyToSave = {
-      id: assembly?.id || Math.random().toString(36).substr(2, 9),
+      id: id.trim(),
       name,
-      eBKPClassification,
       category,
       width: totalWidth,
-      layers: layers.map((layer) => ({
-        ...layer,
-        fraction: layer.fraction / totalThicknessMm,
-      })),
+      layers,
     };
 
     onSave(assemblyToSave);
@@ -251,7 +435,6 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
         materials
       );
       setName(convertedAssembly.name);
-      setEBKPClassification(convertedAssembly.eBKPClassification);
       setCategory(convertedAssembly.category as Assembly["category"]);
       setLayers(convertedAssembly.layers);
     } catch (err) {
@@ -263,12 +446,13 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
   return {
     formState: {
       name,
-      eBKPClassification,
+      id,
       category,
       layers,
       newMaterial,
       newThickness,
       newDensity,
+      newEBKPClassification,
       materials,
       loading,
       error,
@@ -278,17 +462,29 @@ export const useAssemblyForm = ({ assembly, onSave }: UseAssemblyFormProps) => {
       newRebarAmount,
       totalThicknessMm,
       rebarMaterials,
+      showLinearElements,
+      newLinearElementMaterial,
+      newLinearElementWidth,
+      newLinearElementHeight,
+      newLinearElementSpacing,
+      linearElementMaterials,
     },
     handlers: {
       setName,
-      setEBKPClassification,
+      setId,
       setCategory,
       setNewMaterial,
       setNewThickness,
       setNewDensity,
+      setNewEBKPClassification,
       setShowRebar,
       setNewRebarMaterial,
       setNewRebarAmount,
+      setShowLinearElements,
+      setNewLinearElementMaterial,
+      setNewLinearElementWidth,
+      setNewLinearElementHeight,
+      setNewLinearElementSpacing,
       handleAddLayer,
       handleEditLayer,
       handleSaveLayerEdit,
@@ -305,28 +501,51 @@ const convertImportedAssembly = (
   assembly: Assembly,
   kbobMaterials: KbobMaterial[]
 ): Assembly => {
+  console.log("Converting assembly:", assembly);
   const totalWidth = assembly.width * 1000;
 
   return {
     ...assembly,
     layers: assembly.layers.map((layer) => {
+      console.log("Converting layer:", layer);
       const kbobMaterial =
         findBestMaterialMatch(layer.material, kbobMaterials) ||
         kbobMaterials.find((m) => m.nameDE === layer.materialData?.kbobName);
-      const layerThicknessMm = layer.fraction * totalWidth;
+      const layerThicknessMm = layer.thickness_mm;
+
+      const materialData = {
+        ...layer.materialData,
+        gwp: kbobMaterial?.gwp || layer.materialData?.gwp || 0,
+        density: layer.materialData?.userDefinedDensity
+          ? layer.materialData.density
+          : kbobMaterial?.density || layer.materialData?.density || 0,
+        unit: kbobMaterial?.unit || layer.materialData?.unit || "kg",
+        kbobName: kbobMaterial?.nameDE || layer.materialData?.kbobName,
+        userDefinedDensity: layer.materialData?.userDefinedDensity || false,
+        eBKPClassification: layer.materialData?.eBKPClassification || "",
+        amortization_years: layer.materialData?.amortization_years || 40,
+        thickness_mm:
+          layer.thickness_mm ||
+          (layer.fraction ? layer.fraction * assembly.width * 1000 : 0),
+        kg_per_m2: layer.materialData?.kg_per_m2 || 0,
+        UBP: layer.materialData?.UBP || 0,
+        PENRE: layer.materialData?.PENRE || 0,
+        gwp_indicator: layer.materialData?.gwp_indicator || 0,
+        UBP_indicator: layer.materialData?.UBP_indicator || 0,
+        PENRE_indicator: layer.materialData?.PENRE_indicator || 0,
+        gwp_per_year: layer.materialData?.gwp_per_year || 0,
+        UBP_per_year: layer.materialData?.UBP_per_year || 0,
+        PENRE_per_year: layer.materialData?.PENRE_per_year || 0,
+      };
+
+      console.log("Converted materialData:", materialData);
 
       return {
         ...layer,
-        fraction: layerThicknessMm,
-        materialData: {
-          gwp: kbobMaterial?.gwp || layer.materialData?.gwp || 0,
-          density: layer.materialData?.userDefinedDensity
-            ? layer.materialData.density
-            : kbobMaterial?.density || layer.materialData?.density || 0,
-          unit: kbobMaterial?.unit || layer.materialData?.unit || "kg",
-          kbobName: kbobMaterial?.nameDE || layer.materialData?.kbobName,
-          userDefinedDensity: layer.materialData?.userDefinedDensity || false,
-        },
+        thickness_mm:
+          layer.thickness_mm ||
+          (layer.fraction ? layer.fraction * assembly.width * 1000 : 0),
+        materialData,
       };
     }),
   };
