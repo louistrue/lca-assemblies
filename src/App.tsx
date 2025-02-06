@@ -158,6 +158,7 @@ function App() {
       // Calculate total indicators and per year values
       const totals = assembly.layers.reduce(
         (acc, layer) => {
+          // Add base layer values
           if (layer.materialData) {
             acc.gwp += layer.materialData.gwp;
             acc.ubp += layer.materialData.UBP;
@@ -171,6 +172,37 @@ function App() {
             acc.ubpYear += layer.materialData.UBP / amortizationYears;
             acc.penreYear += layer.materialData.PENRE / amortizationYears;
           }
+
+          // Add rebar values if present
+          if (layer.rebar?.materialData) {
+            acc.gwp += layer.rebar.materialData.gwp;
+            acc.ubp += layer.rebar.materialData.UBP;
+            acc.penre += layer.rebar.materialData.PENRE;
+
+            const amortizationYears = layer.materialData?.eBKPClassification
+              ? EBKP_AMORTIZATION[layer.materialData.eBKPClassification] || 40
+              : 40;
+
+            acc.gwpYear += layer.rebar.materialData.gwp / amortizationYears;
+            acc.ubpYear += layer.rebar.materialData.UBP / amortizationYears;
+            acc.penreYear += layer.rebar.materialData.PENRE / amortizationYears;
+          }
+
+          // Add linear elements values if present
+          if (layer.linearElements?.materialData) {
+            acc.gwp += layer.linearElements.materialData.gwp;
+            acc.ubp += layer.linearElements.materialData.UBP;
+            acc.penre += layer.linearElements.materialData.PENRE;
+
+            const amortizationYears = layer.materialData?.eBKPClassification
+              ? EBKP_AMORTIZATION[layer.materialData.eBKPClassification] || 40
+              : 40;
+
+            acc.gwpYear += layer.linearElements.materialData.gwp / amortizationYears;
+            acc.ubpYear += layer.linearElements.materialData.UBP / amortizationYears;
+            acc.penreYear += layer.linearElements.materialData.PENRE / amortizationYears;
+          }
+
           return acc;
         },
         { gwp: 0, ubp: 0, penre: 0, gwpYear: 0, ubpYear: 0, penreYear: 0 }

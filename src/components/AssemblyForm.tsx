@@ -21,10 +21,71 @@ const AssemblyForm: React.FC<AssemblyFormProps> = ({
 }) => {
   const { formState, handlers } = useAssemblyForm({ assembly, onSave });
 
+  // Calculate total thickness including rebar if present
+  const calculateTotalThickness = () => {
+    let total = formState.totalThicknessMm;
+
+    // Add rebar thickness if present
+    if (
+      formState.showRebar &&
+      formState.newRebarMaterial &&
+      formState.newRebarAmount
+    ) {
+      const rebarThickness = parseFloat(formState.newRebarAmount);
+      if (!isNaN(rebarThickness)) {
+        total += rebarThickness;
+      }
+    }
+
+    // Add linear element thickness if present
+    if (formState.showLinearElements && formState.newLinearElementMaterial) {
+      const height = parseFloat(formState.newLinearElementHeight);
+      if (!isNaN(height)) {
+        total += height;
+      }
+    }
+
+    return total;
+  };
+
+  // Calculate total GWP including rebar
+  const calculateTotalGWP = () => {
+    let total = formState.totalGWP || 0;
+    
+    // Add rebar GWP if present
+    if (
+      formState.showRebar &&
+      formState.newRebarMaterial &&
+      formState.newRebarAmount
+    ) {
+      const rebarAmount = parseFloat(formState.newRebarAmount);
+      if (!isNaN(rebarAmount) && formState.newRebarMaterial.gwp) {
+        total += formState.newRebarMaterial.gwp * (rebarAmount / 1000); // Convert to m³
+      }
+    }
+    
+    return total;
+  };
+
+  const totalThickness = calculateTotalThickness();
+  const totalGWP = calculateTotalGWP();
+
+  // Modify the onSave handler to include the complete totals
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const completeAssembly = {
+      ...formState,
+      totalThicknessMm: totalThickness,
+      totalGWP: totalGWP,
+      // Include other totals as needed
+    };
+    onSave(completeAssembly);
+  };
+
   return (
     <Card>
       <CardContent>
-        <form onSubmit={handlers.handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <Typography variant="h5" component="div" gutterBottom>
             {assembly ? "Edit Assembly" : "New Assembly"}
           </Typography>
@@ -40,12 +101,12 @@ const AssemblyForm: React.FC<AssemblyFormProps> = ({
           />
 
           <Typography variant="h6" component="div" gutterBottom sx={{ mt: 2 }}>
-            Total Width: {formState.totalThicknessMm.toFixed(1)} mm
+            Total Width: {totalThickness.toFixed(1)} mm
           </Typography>
 
           <SectionView
             layers={formState.layers}
-            totalThicknessMm={formState.totalThicknessMm}
+            totalThicknessMm={totalThickness}
             editingLayerIndex={formState.editingLayer}
             onEditLayer={handlers.handleEditLayer}
             onRemoveLayer={handlers.handleRemoveLayer}
